@@ -1,0 +1,46 @@
+name: citicare
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^1.4.0
+  shared_preferences: ^2.2.2
+  image_picker: ^1.0.4
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/logo/cc_white.png
+    - assets/logo/cc.png
+    - assets/logo/citicare_black.png
+    - assets/logo/citicare_white.png
+    - assets/logo/citicare_green.png
+    - assets/logo/icon_logo_black.png
+    - assets/logo/icon_logo_white.png
+    - assets/logo/icon_logo_green.png
+    - assets/logo/santa maria-seal.png
+    - assets/logo/main_logo.png
+
+
+
+
+
