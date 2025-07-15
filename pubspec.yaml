@@ -13,9 +13,14 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   http: ^1.4.0
+  path_provider: ^2.0.14
   shared_preferences: ^2.2.2
   image_picker: ^1.0.4
   intl: ^0.18.1
+  saver_gallery: ^4.0.1
+  permission_handler: ^11.0.1
+  url_launcher: ^6.1.11
+
 
 dev_dependencies:
   flutter_test:

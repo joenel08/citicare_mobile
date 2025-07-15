@@ -1,5 +1,11 @@
+import 'dart:convert';
+
+import 'package:citicare/senior/QR_code_generator.dart';
+import 'package:citicare/senior/id_card_generator.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'sidebar_senior.dart';
+import 'package:http/http.dart' as http;
 
 class SeniorDashboard extends StatefulWidget {
   final int userId;
@@ -14,8 +20,67 @@ class SeniorDashboard extends StatefulWidget {
 }
 
 class _SeniorDashboardState extends State<SeniorDashboard> {
-  String selectedPage = "Home";
+  String selectedPage = "Dashboard";
   bool isSidebarOpen = false;
+  String fullname = "";
+  Map<String, dynamic>? profile;
+  @override
+  void initState() {
+    super.initState();
+    _loadFullname();
+    _fetchProfileData();
+  }
+
+  Future<void> _loadFullname() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String firstName = prefs.getString('profile_first_name') ?? '';
+    String lastName = prefs.getString('profile_last_name') ?? '';
+    setState(() {
+      fullname = "$firstName $lastName";
+    });
+  }
+
+  Future<void> _fetchProfileData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? userId = prefs.getInt('user_id');
+
+    try {
+      final response = await http.get(Uri.parse(
+          'http://192.168.100.4:8080/citicare/users/get_senior_info_for_id.php?user_id=$userId'));
+
+      if (response.statusCode == 200) {
+        final res = json.decode(response.body);
+        if (res['status'] == 'success') {
+          // Get the raw path from database
+          String qrPath = res['data']['qr_code'];
+          String photoID = res['data']['photo_id'];
+
+          // Remove any existing base URL if present
+          qrPath = qrPath.replaceAll('http://192.168.100.4:8080/citicare/', '');
+          qrPath = qrPath.replaceAll('http://192.168.100.4:8080/', '');
+          qrPath = qrPath.replaceAll('/citicare/', '');
+
+          photoID =
+              photoID.replaceAll('http://192.168.100.4:8080/citicare/', '');
+          photoID = photoID.replaceAll('http://192.168.100.4:8080/', '');
+          photoID = photoID.replaceAll('/citicare/', '');
+          // Remove any leading/trailing slashes
+          photoID = photoID.replaceAll(RegExp(r'^/|/$'), '');
+
+          setState(() {
+            profile = res['data'];
+            profile!['qr_code'] = 'http://192.168.100.4:8080/citicare/$qrPath';
+            profile!['photo_id'] =
+                'http://192.168.100.4:8080/citicare/$photoID';
+          });
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching profile: $e')),
+      );
+    }
+  }
 
   void toggleSidebar() {
     setState(() {
@@ -42,7 +107,7 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Image.asset(
-                        'assets/logo/citicare_white.png', // your logo path
+                        'assets/logo/citicare_white.png',
                         height: 28,
                       ),
                       IconButton(
@@ -56,7 +121,7 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
                 // Subheader with page title
                 Container(
                   width: double.infinity,
-                  color: const Color(0xFF28A745), // deeper green
+                  color: const Color(0xFF28A745),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Text(
@@ -79,24 +144,82 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Welcome User!",
-                              style: TextStyle(
-                                  fontSize: 24, fontWeight: FontWeight.bold),
+                            Text(
+                              "Welcome ${fullname.isNotEmpty ? fullname.toUpperCase() : 'USER'}!",
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             const Text(
                               "This system is designed to modernize and improve the efficiency of the registration process for vulnerable populations, including persons with disabilities (PWDs), senior citizens, and solo parents.",
                               style: TextStyle(fontSize: 14),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 10),
                             ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                if (profile != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => IDCardGeneratorPage(
+                                          profile: profile!),
+                                    ),
+                                  );
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF28A745),
+                                backgroundColor:
+                                    Colors.green, // Background color
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.zero, // No border radius
+                                ),
                               ),
-                              child: const Text("Continue"),
-                            )
+                              child: const Text(
+                                "Preview & Download ID Card",
+                                style: TextStyle(
+                                    color:
+                                        Colors.white), // Optional: white text
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (profile == null ||
+                                    profile!['qr_code'] == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('QR code not available yet')),
+                                  );
+                                  return;
+                                }
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => QRCodePreviewPage(
+                                        qrCodeUrl: profile!['qr_code']),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero,
+                                  side: const BorderSide(
+                                    color: Colors.green,
+                                    width: 1,
+                                    style: BorderStyle.solid,
+                                  ),
+                                ),
+                              ),
+                              child: const Text(
+                                "View & Download QR Code", // Updated text
+                                style: TextStyle(color: Colors.green),
+                              ),
+                            ),
                           ],
                         ),
                       ),
