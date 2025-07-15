@@ -43,6 +43,7 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
   Future<void> _fetchProfileData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int? userId = prefs.getInt('user_id');
+    print(userId);
 
     try {
       final response = await http.get(Uri.parse(
@@ -53,25 +54,15 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
         if (res['status'] == 'success') {
           // Get the raw path from database
           String qrPath = res['data']['qr_code'];
-          String photoID = res['data']['photo_id'];
 
           // Remove any existing base URL if present
           qrPath = qrPath.replaceAll('http://192.168.100.4:8080/citicare/', '');
           qrPath = qrPath.replaceAll('http://192.168.100.4:8080/', '');
           qrPath = qrPath.replaceAll('/citicare/', '');
 
-          photoID =
-              photoID.replaceAll('http://192.168.100.4:8080/citicare/', '');
-          photoID = photoID.replaceAll('http://192.168.100.4:8080/', '');
-          photoID = photoID.replaceAll('/citicare/', '');
-          // Remove any leading/trailing slashes
-          photoID = photoID.replaceAll(RegExp(r'^/|/$'), '');
-
           setState(() {
             profile = res['data'];
             profile!['qr_code'] = 'http://192.168.100.4:8080/citicare/$qrPath';
-            profile!['photo_id'] =
-                'http://192.168.100.4:8080/citicare/$photoID';
           });
         }
       }
