@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:citicare/global_url.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'sidebar_senior.dart';
@@ -41,9 +42,13 @@ class _NewsPageState extends State<NewsPage> {
 
   Future<void> _fetchNews() async {
     try {
-      final response = await http.get(
-        Uri.parse('http://192.168.100.4:8080/citicare/users/fetch_news.php'),
-      );
+      // final response = await http.get(
+      //   Uri.parse('http://192.168.100.4:8080/citicare/users/fetch_news.php'),
+      // );
+
+      Uri fetchNewsUri = buildUri('fetch_news.php');
+
+      final response = await http.get(fetchNewsUri);
 
       if (response.statusCode == 200) {
         final res = json.decode(response.body);

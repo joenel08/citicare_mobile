@@ -1,7 +1,9 @@
+import 'package:citicare/login_page.dart';
 import 'package:citicare/otp_verification.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:citicare/global_url.dart';
 
 class CitiCareRegistrationPage extends StatefulWidget {
   const CitiCareRegistrationPage({super.key});
@@ -52,8 +54,10 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
     );
 
     try {
+      Uri registrationUri = buildUri('registration.php');
+
       final response = await http.post(
-        Uri.parse("http://192.168.100.4:8080/citicare/users/registration.php"),
+        registrationUri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "contact_info": contactController.text,
@@ -65,14 +69,21 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
       Navigator.pop(context); // close loading spinner
 
       final data = jsonDecode(response.body);
-      if (data['status'] == 'success') {
-        // Redirect to OTP page
+
+      if (data['status'] == 'success' || data['status'] == 'resend_otp') {
+        // Proceed to OTP verification for new or unverified user
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) =>
                 OtpVerificationPage(contactInfo: contactController.text),
           ),
+        );
+      } else if (data['status'] == 'already_verified') {
+        // User already verified, go to login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => LoginPage()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -84,6 +95,8 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Network error: $e")),
       );
+
+      print("Network error: $e");
     }
   }
 
@@ -158,6 +171,7 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
                       });
                     },
                     title: const Text("Senior Citizen"),
+                    activeColor: Colors.green, // ✅ green check
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
                     visualDensity:
@@ -173,6 +187,7 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
                       });
                     },
                     title: const Text("Person With Disability (PWD)"),
+                    activeColor: Colors.green, // ✅ green check
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
                     visualDensity:
@@ -188,6 +203,7 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
                       });
                     },
                     title: const Text("Solo Parent"),
+                    activeColor: Colors.green, // ✅ green check
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
                     visualDensity:

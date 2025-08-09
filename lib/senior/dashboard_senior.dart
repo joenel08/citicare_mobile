@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:citicare/global_url.dart';
 import 'package:citicare/senior/QR_code_generator.dart';
 import 'package:citicare/senior/id_card_generator.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +47,14 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
     print(userId);
 
     try {
-      final response = await http.get(Uri.parse(
-          'http://192.168.100.4:8080/citicare/users/get_senior_info_for_id.php?user_id=$userId'));
+      // final response = await http.get(Uri.parse(
+      //     'http://192.168.100.4:8080/citicare/users/get_senior_info_for_id.php?user_id=$userId'));
+
+      Uri seniorInfoUri = buildUri('get_senior_info_for_id.php', {
+        'user_id': userId,
+      });
+
+      final response = await http.get(seniorInfoUri);
 
       if (response.statusCode == 200) {
         final res = json.decode(response.body);
@@ -56,13 +63,13 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
           String qrPath = res['data']['qr_code'];
 
           // Remove any existing base URL if present
-          qrPath = qrPath.replaceAll('http://192.168.100.4:8080/citicare/', '');
-          qrPath = qrPath.replaceAll('http://192.168.100.4:8080/', '');
+          qrPath = qrPath.replaceAll('http://192.168.100.4/citicare/', '');
+          qrPath = qrPath.replaceAll('http://192.168.100.4/', '');
           qrPath = qrPath.replaceAll('/citicare/', '');
 
           setState(() {
             profile = res['data'];
-            profile!['qr_code'] = 'http://192.168.100.4:8080/citicare/$qrPath';
+            profile!['qr_code'] = 'http://192.168.100.4/citicare/$qrPath';
           });
         }
       }

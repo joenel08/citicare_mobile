@@ -1,5 +1,6 @@
 import 'package:citicare/senior/SeniorIncompleteProfilePage.dart';
 import 'package:citicare/senior/view_submitted_info.dart';
+import 'package:citicare/solo/SoloIncompleteProfilePage.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -9,6 +10,7 @@ import 'senior/dashboard_senior.dart';
 import 'pwd/dashboard_pwd.dart';
 import 'solo/dashboard_solo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:citicare/global_url.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,68 +39,19 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
+      Uri loginUri = buildUri('login.php');
       final response = await http.post(
-        Uri.parse("http://192.168.100.4:8080/citicare/users/login.php"),
+        loginUri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "contact_info": contact,
-          "password": password,
-        }),
+        body: jsonEncode({"contact_info": contact, "password": password}),
       );
 
-      final data = jsonDecode(response.body);
       setState(() => isLoading = false);
+      final data = jsonDecode(response.body);
 
       if (data['status'] == 'success') {
         if (data['verified'] == 1) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('user_id', data['id']);
-          await prefs.setString('user_type', data['user_type']);
-          await prefs.setString('contact_info', contact);
-
-          if (data['user_type'] == 'Senior Citizen') {
-            if (data['has_profile'] == true && data['profile'] != null) {
-              // Save full profile to session
-              Map profile = data['profile'];
-              for (var key in profile.keys) {
-                final value = profile[key];
-                if (value != null) {
-                  await prefs.setString('profile_$key', value.toString());
-                }
-              }
-
-              // Get is_verified from SharedPreferences (it's stored as string)
-              String? verifiedStr = prefs.getString("profile_is_verified");
-              int is_verified = int.tryParse(verifiedStr ?? "0") ?? 0;
-
-              if (is_verified == 0) {
-                // Redirect to View Submitted Information page
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ViewSubmittedInfoPage()),
-                );
-                return;
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => SeniorDashboard(userId: data['id'])),
-                );
-              }
-
-              // Redirect to dashboard
-            } else {
-              // Redirect to incomplete profile page
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const SeniorIncompleteProfilePage()),
-              );
-            }
-          }
-
-          // TODO: Handle PWD & Solo Parent user types as needed
+          await handleLoginResponse(data, contact);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('User not verified!')),
@@ -114,6 +67,76 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
+    }
+  }
+
+  Future<void> handleLoginResponse(
+      Map<String, dynamic> data, String contact) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_id', data['id']);
+    await prefs.setString('user_type', data['user_type']);
+    await prefs.setString('contact_info', contact);
+
+    final userType = data['user_type'];
+    final profile = data['profile'];
+    final hasProfile = data['has_profile'] == true && profile != null;
+
+    if (hasProfile) {
+      for (var key in profile.keys) {
+        final value = profile[key];
+        if (value != null) {
+          await prefs.setString('profile_$key', value.toString());
+        }
+      }
+
+      final isVerified =
+          int.tryParse(prefs.getString('profile_is_verified') ?? '0') ?? 0;
+
+      if (isVerified == 0) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ViewSubmittedInfoPage()),
+        );
+        return;
+      }
+
+      // Redirect based on user type
+      switch (userType) {
+        case 'Senior Citizen':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => SeniorDashboard(userId: data['id'])),
+          );
+          break;
+        case 'Solo Parent':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => SoloDashboard(userId: data['id'])),
+          );
+          break;
+        // Add 'PWD' or other user types here as needed
+      }
+    } else {
+      // Handle incomplete profiles
+      switch (userType) {
+        case 'Senior Citizen':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const SeniorIncompleteProfilePage()),
+          );
+          break;
+        case 'Solo Parent':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const SoloIncompleteProfilePage()),
+          );
+          break;
+        // Add fallback for other user types
+      }
     }
   }
 
