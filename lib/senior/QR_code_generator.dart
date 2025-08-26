@@ -70,18 +70,30 @@ class QRCodePreviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const cardWidth = 280.0;
     final cleanUrl = _getCleanUrl();
     print('Displaying image from: $cleanUrl');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your QR Code'),
-        backgroundColor: const Color(0xFF3ECB6C),
+        backgroundColor: Colors.green[700],
+        title: Image.asset(
+          'assets/logo/citicare_white.png',
+          height: 28,
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 6),
+            Text("QR Code Preview",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
+            const SizedBox(height: 6),
             Image.network(
               cleanUrl,
               width: 300,
@@ -101,13 +113,30 @@ class QRCodePreviewPage extends StatelessWidget {
                 );
               },
             ),
+            SizedBox(
+              width: cardWidth,
+              child: Text(
+                  "You may download the QR Code above and use it as intended.",
+                  textAlign: TextAlign.center, // ✅ centers the text
+                  style: TextStyle(fontSize: 14, color: Colors.grey)),
+            ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _downloadQRCode(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3ECB6C),
+            SizedBox(
+              width: cardWidth,
+              child: ElevatedButton(
+                onPressed: () => _downloadQRCode(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  "Download QR Code",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-              child: const Text('Download QR Code'),
             ),
           ],
         ),

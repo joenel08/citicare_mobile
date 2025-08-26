@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:citicare/global_url.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,7 +7,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ViewSubmittedInfoPage extends StatefulWidget {
-  const ViewSubmittedInfoPage({super.key});
+  final int userId;
+
+  const ViewSubmittedInfoPage({super.key, required this.userId});
 
   @override
   State<ViewSubmittedInfoPage> createState() => _ViewSubmittedInfoPageState();
@@ -22,35 +26,42 @@ class _ViewSubmittedInfoPageState extends State<ViewSubmittedInfoPage> {
   }
 
   Future<void> fetchSubmittedData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userIdInt = prefs.getInt("user_id");
-    String userId = userIdInt?.toString() ?? "";
+    try {
+      Uri seniorInfoUri = buildUri('users/get_senior_info.php');
 
-    Uri seniorInfoUri = buildUri('get_senior_info.php?user_id=$userId');
+      final res = await http.post(
+        seniorInfoUri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"user_id": widget.userId}),
+      );
 
-    final res = await http.get(seniorInfoUri);
-
-    // final uri = Uri.parse(
-    //     "http://192.168.100.4:8080/citicare/users/get_senior_info.php?user_id=$userId");
-
-    // final res = await http.get(uri);
-
-    if (res.statusCode == 200) {
-      final json = jsonDecode(res.body);
-      if (json['success']) {
-        setState(() {
-          data = json['data'];
-          loading = false;
-        });
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        if (json['success']) {
+          setState(() {
+            data = json['data'];
+            loading = false;
+          });
+        } else {
+          setState(() => loading = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(json['message'] ?? "Failed")));
+          }
+        }
       } else {
         setState(() => loading = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(json['message'])));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Server error: ${res.statusCode}")));
+        }
       }
-    } else {
+    } catch (e) {
       setState(() => loading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Error fetching data")));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Exception: $e")));
+      }
     }
   }
 

@@ -47,10 +47,7 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
     print(userId);
 
     try {
-      // final response = await http.get(Uri.parse(
-      //     'http://192.168.100.4:8080/citicare/users/get_senior_info_for_id.php?user_id=$userId'));
-
-      Uri seniorInfoUri = buildUri('get_senior_info_for_id.php', {
+      Uri seniorInfoUri = buildUri('users/get_senior_info_for_id.php', {
         'user_id': userId,
       });
 
@@ -59,17 +56,21 @@ class _SeniorDashboardState extends State<SeniorDashboard> {
       if (response.statusCode == 200) {
         final res = json.decode(response.body);
         if (res['status'] == 'success') {
-          // Get the raw path from database
-          String qrPath = res['data']['qr_code'];
+          // Get the raw paths from database
+          String qrFilename = res['data']['qr_code'];
+          String photoIdFilename = res['data']['photo_id']; // Get photo ID path
 
-          // Remove any existing base URL if present
-          qrPath = qrPath.replaceAll('http://192.168.100.4/citicare/', '');
-          qrPath = qrPath.replaceAll('http://192.168.100.4/', '');
-          qrPath = qrPath.replaceAll('/citicare/', '');
+          // Remove any existing base URL if present for QR code
 
           setState(() {
             profile = res['data'];
-            profile!['qr_code'] = 'http://192.168.100.4/citicare/$qrPath';
+            // QR code: http://localhost/citicare/assets/uploads/qrcodes/filename.png
+            profile!['qr_code'] =
+                'http://$apiHost:$apiPort/$apiBasePath/assets/uploads/qrcodes/$qrFilename';
+
+            // Photo ID: http://localhost/citicare/assets/uploads/filename.jpg
+            profile!['photo_id'] =
+                'http://$apiHost:$apiPort/$apiBasePath/assets/uploads/$photoIdFilename';
           });
         }
       }

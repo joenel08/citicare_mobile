@@ -42,11 +42,7 @@ class _NewsPageState extends State<NewsPage> {
 
   Future<void> _fetchNews() async {
     try {
-      // final response = await http.get(
-      //   Uri.parse('http://192.168.100.4:8080/citicare/users/fetch_news.php'),
-      // );
-
-      Uri fetchNewsUri = buildUri('fetch_news.php');
+      Uri fetchNewsUri = buildUri('users/fetch_news.php');
 
       final response = await http.get(fetchNewsUri);
 
@@ -245,14 +241,25 @@ class _NewsPageState extends State<NewsPage> {
 
                 // News Cards
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                  child: RefreshIndicator(
+                    onRefresh: _fetchNews,
+                    color: Colors.green[700], // spinner color
+                    backgroundColor: Colors.white, // background behind spinner
                     child: filteredNewsList.isEmpty
-                        ? const Center(child: Text("No news available"))
-                        : Column(
-                            children: filteredNewsList
-                                .map((news) => buildNewsCard(news))
-                                .toList(),
+                        ? ListView(
+                            // ✅ must use ListView (not Center) so RefreshIndicator works
+                            children: const [
+                              SizedBox(height: 200),
+                              Center(child: Text("No news available")),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: filteredNewsList.length,
+                            itemBuilder: (context, index) {
+                              final news = filteredNewsList[index];
+                              return buildNewsCard(news);
+                            },
                           ),
                   ),
                 ),
@@ -291,8 +298,14 @@ class _NewsPageState extends State<NewsPage> {
   Widget buildNewsCard(dynamic news) {
     String imageUrl = news['attachment'] ?? '';
     if (imageUrl.isNotEmpty) {
-      imageUrl = imageUrl.replaceAll('http://192.168.100.4:8080/citicare/', '');
-      imageUrl = 'http://192.168.100.4:8080/citicare/$imageUrl';
+      // remove the base URL if it exists
+      // imageUrl = imageUrl.replaceAll('http://192.168.100.4:8080/citicare/', '');
+
+      // build a proper Uri
+      Uri imageUri = buildUri(imageUrl);
+
+      // if you need a String for Image.network etc.
+      imageUrl = imageUri.toString();
     }
 
     return Card(

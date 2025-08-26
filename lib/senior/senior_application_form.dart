@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:citicare/senior/view_submitted_info.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:citicare/global_url.dart';
 
 class SeniorApplicationForm extends StatefulWidget {
   const SeniorApplicationForm({super.key});
@@ -16,6 +18,7 @@ class SeniorApplicationForm extends StatefulWidget {
 class _SeniorApplicationFormState extends State<SeniorApplicationForm> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
+  bool _isLoading = false;
 
   // First Section
   final TextEditingController fname = TextEditingController();
@@ -85,83 +88,111 @@ class _SeniorApplicationFormState extends State<SeniorApplicationForm> {
   }
 
   Future<void> uploadFormData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      int? userIdInt = prefs.getInt("user_id");
+      String userId = userIdInt?.toString() ?? "";
 
-    int? userIdInt = prefs.getInt("user_id");
-    String userId = userIdInt?.toString() ?? "";
+      final uri = buildUri("users/save_senior_form.php");
+      debugPrint("Sending request to: $uri");
 
-    print(userId);
+      var request = http.MultipartRequest('POST', uri)
+        ..fields['user_id'] = userId
+        ..fields['municipality'] = "Santa Maria"
+        ..fields['province'] = "Isabela"
+        ..fields['first_name'] = fname.text
+        ..fields['middle_name'] = mname.text
+        ..fields['last_name'] = lname.text
+        ..fields['birthdate'] = birthDate?.toIso8601String() ?? ""
+        ..fields['age'] = age.toString()
+        ..fields['gender'] = gender ?? ''
+        ..fields['civil_status'] = civilStatus ?? ''
+        ..fields['education'] = education ?? ''
+        ..fields['occupation'] = occupation.text
+        ..fields['place_of_birth'] = pob.text
+        ..fields['contact_no'] = contactNo.text
+        ..fields['barangay'] = barangay
+        ..fields['emergency_name'] = emergencyName.text
+        ..fields['emergency_contact'] = emergencyContact.text
+        ..fields['emergency_relationship'] = emergencyRelation.text
+        ..fields['social_pensioner'] = isPensioner ? "1" : "0"
+        ..fields['retiree'] = isRetiree ? "1" : "0"
+        ..fields['retiree_desc'] = isRetiree ? retireeDetails.text : ""
+        ..fields['is_gsis'] = isGSIS ? "1" : "0"
+        ..fields['health_status'] = healthStatus ?? '';
 
-    final uri = Uri.parse(
-        "http://192.168.100.4:8080/citicare/users/save_senior_form.php");
-
-    var request = http.MultipartRequest('POST', uri)
-      ..fields['user_id'] = userId
-      ..fields['municipality'] = "Santa Maria"
-      ..fields['province'] = "Isabela"
-      ..fields['first_name'] = fname.text
-      ..fields['middle_name'] = mname.text
-      ..fields['last_name'] = lname.text
-      ..fields['birthdate'] = birthDate.toString()
-      ..fields['age'] = age.toString()
-      ..fields['gender'] = gender ?? ''
-      ..fields['civil_status'] = civilStatus ?? ''
-      ..fields['education'] = education ?? ''
-      ..fields['occupation'] = occupation.text
-      ..fields['place_of_birth'] = pob.text
-      ..fields['contact_no'] = contactNo.text
-      ..fields['barangay'] = barangay
-      ..fields['emergency_name'] = emergencyName.text
-      ..fields['emergency_contact'] = emergencyContact.text
-      ..fields['emergency_relationship'] = emergencyRelation.text
-      ..fields['social_pensioner'] = isPensioner ? "1" : "0"
-      ..fields['retiree'] = isRetiree ? "1" : "0"
-      ..fields['retiree_desc'] = isRetiree ? retireeDetails.text : ""
-      ..fields['is_gsis'] = isGSIS ? "1" : "0"
-      ..fields['health_status'] = healthStatus ?? '';
-
-    if (birthProof != null) {
-      request.files.add(
-          await http.MultipartFile.fromPath('birth_proof', birthProof!.path));
-    }
-    if (residencyProof != null) {
-      request.files.add(await http.MultipartFile.fromPath(
-          'residency_proof', residencyProof!.path));
-    }
-    if (photoId != null) {
-      request.files
-          .add(await http.MultipartFile.fromPath('photo_id', photoId!.path));
-    }
-
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
-      // Show success snackbar
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Form submitted successfully."),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        // Wait a moment to show the snackbar
-        await Future.delayed(const Duration(seconds: 2));
-
-        // Redirect to View Submitted Information page
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ViewSubmittedInfoPage()),
-        );
+      // Attach files if they exist
+      if (birthProof != null) {
+        request.files.add(
+            await http.MultipartFile.fromPath('birth_proof', birthProof!.path));
       }
-    } else {
+      if (residencyProof != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+            'residency_proof', residencyProof!.path));
+      }
+      if (photoId != null) {
+        request.files
+            .add(await http.MultipartFile.fromPath('photo_id', photoId!.path));
+      }
+
+      // Send request
+      final response = await request.send();
+
+      // Read server response body
+      final responseBody = await response.stream.bytesToString();
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Server Response: $responseBody");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        String appNo = data["application_no"];
+        int scId = data["sc_id"];
+        int userIdReturned = data["user_id"].toString() as int;
+
+        debugPrint("Application No: $appNo");
+        debugPrint("Inserted Senior ID: $scId");
+        debugPrint("User ID: $userIdReturned");
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Form submitted successfully.\n$responseBody"),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          await Future.delayed(const Duration(seconds: 2));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ViewSubmittedInfoPage(
+                      userId: userIdReturned,
+                    )),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  "Failed to submit form. [${response.statusCode}] $responseBody"),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e, stack) {
+      debugPrint("Upload failed: $e");
+      debugPrint("Stacktrace: $stack");
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to submit form. Please try again."),
+          SnackBar(
+            content: Text("Error: $e"),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -190,44 +221,61 @@ class _SeniorApplicationFormState extends State<SeniorApplicationForm> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Form(
-        key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.green.shade700,
-                    width: 2,
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.green.shade700,
+                        width: 2,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
+                  padding: const EdgeInsets.all(20),
+                  child: steps[_currentStep],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
               ),
-              padding: const EdgeInsets.all(20),
-              child: steps[_currentStep],
             ),
           ),
-        ),
+
+          // ✅ Loading overlay on top of form
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.green,
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
             if (_currentStep > 0)
               OutlinedButton(
-                onPressed: previousStep,
+                onPressed:
+                    _isLoading ? null : previousStep, // disable while loading
                 style: OutlinedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  side: BorderSide(color: Colors.green),
-                  shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: Colors.green),
+                  shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                   ),
                 ),
@@ -240,7 +288,7 @@ class _SeniorApplicationFormState extends State<SeniorApplicationForm> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[700],
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.zero,
                 ),
               ),
@@ -248,17 +296,56 @@ class _SeniorApplicationFormState extends State<SeniorApplicationForm> {
                 _currentStep == 4 ? "Submit" : "Next",
                 style: const TextStyle(color: Colors.white),
               ),
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  if (_currentStep == 4) {
-                    await uploadFormData();
-                  } else {
-                    nextStep();
-                  }
-                }
-              },
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      if (_formKey.currentState!.validate()) {
+                        if (_currentStep == 4) {
+                          // Show confirmation dialog
+                          bool confirm = await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Confirm Submission"),
+                              content: const Text(
+                                  "Are you sure you want to submit this application?"),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text("Cancel"),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.green),
+                                    shape: const RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.zero,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "Submit Application",
+                                    style: TextStyle(color: Colors.green),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            setState(() => _isLoading = true);
+                            await uploadFormData();
+                            setState(() => _isLoading = false);
+                          }
+                        } else {
+                          nextStep();
+                        }
+                      }
+                    },
             ),
-          ])),
+          ],
+        ),
+      ),
     );
   }
 

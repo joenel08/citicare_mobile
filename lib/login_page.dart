@@ -1,3 +1,4 @@
+import 'package:citicare/otp_verification.dart';
 import 'package:citicare/senior/SeniorIncompleteProfilePage.dart';
 import 'package:citicare/senior/view_submitted_info.dart';
 import 'package:citicare/solo/SoloIncompleteProfilePage.dart';
@@ -39,7 +40,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      Uri loginUri = buildUri('login.php');
+      Uri loginUri = buildUri('users/login.php');
       final response = await http.post(
         loginUri,
         headers: {'Content-Type': 'application/json'},
@@ -77,6 +78,8 @@ class _LoginPageState extends State<LoginPage> {
     await prefs.setString('user_type', data['user_type']);
     await prefs.setString('contact_info', contact);
 
+    print(data['id']);
+
     final userType = data['user_type'];
     final profile = data['profile'];
     final hasProfile = data['has_profile'] == true && profile != null;
@@ -95,7 +98,8 @@ class _LoginPageState extends State<LoginPage> {
       if (isVerified == 0) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => ViewSubmittedInfoPage()),
+          MaterialPageRoute(
+              builder: (_) => ViewSubmittedInfoPage(userId: data['id'])),
         );
         return;
       }
@@ -256,6 +260,22 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.green),
                       ),
                     ),
+                    // TextButton(
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (_) => const OtpVerificationPage(
+                    //           contactInfo: '09998682564',
+                    //         ),
+                    //       ),
+                    //     );
+                    //   },
+                    //   child: const Text(
+                    //     "Test OTP Page",
+                    //     style: TextStyle(color: Colors.grey),
+                    //   ),
+                    // ),
                   ],
                 ),
               ),

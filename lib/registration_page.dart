@@ -21,7 +21,6 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
   bool isSenior = false;
   bool isPWD = false;
   bool isSoloParent = false;
-
   Future<void> registerUser() async {
     String userType = '';
     if (isSenior) userType = 'Senior Citizen';
@@ -54,49 +53,68 @@ class _CitiCareRegistrationPageState extends State<CitiCareRegistrationPage> {
     );
 
     try {
-      Uri registrationUri = buildUri('registration.php');
+      Uri registrationUri = buildUri('users/registration.php');
+      print("👉 Sending request to: $registrationUri");
+
+      final requestBody = {
+        "contact_info": contactController.text,
+        "password": passwordController.text,
+        "user_type": userType,
+      };
+      print("📤 Request body: $requestBody");
 
       final response = await http.post(
         registrationUri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "contact_info": contactController.text,
-          "password": passwordController.text,
-          "user_type": userType,
-        }),
+        body: jsonEncode(requestBody),
       );
+
+      print("📥 Response status: ${response.statusCode}");
+      print("📥 Raw response body: ${response.body}");
 
       Navigator.pop(context); // close loading spinner
 
-      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        try {
+          final data = jsonDecode(response.body);
+          print("✅ Decoded JSON: $data");
 
-      if (data['status'] == 'success' || data['status'] == 'resend_otp') {
-        // Proceed to OTP verification for new or unverified user
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                OtpVerificationPage(contactInfo: contactController.text),
-          ),
-        );
-      } else if (data['status'] == 'already_verified') {
-        // User already verified, go to login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => LoginPage()),
-        );
+          if (data['status'] == 'success' || data['status'] == 'resend_otp') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    OtpVerificationPage(contactInfo: contactController.text),
+              ),
+            );
+          } else if (data['status'] == 'already_verified') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => LoginPage()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error: ${data['message']}")),
+            );
+          }
+        } catch (e) {
+          print("❌ JSON decode error: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid server response")),
+          );
+        }
       } else {
+        print("❌ Server returned non-200 status: ${response.statusCode}");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${data['message']}")),
+          SnackBar(content: Text("Server error: ${response.statusCode}")),
         );
       }
     } catch (e) {
       Navigator.pop(context); // close loading spinner on error
+      print("❌ Network error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Network error: $e")),
       );
-
-      print("Network error: $e");
     }
   }
 

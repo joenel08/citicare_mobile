@@ -1,6 +1,7 @@
 import 'package:citicare/global_url.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 
 class OtpVerificationPage extends StatefulWidget {
@@ -17,6 +18,69 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   final List<TextEditingController> _controllers =
       List.generate(6, (index) => TextEditingController());
 
+  Timer? _timer;
+  int _start = 10; // 10 minutes in seconds
+  bool _showResend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer();
+  }
+
+  void startTimer() {
+    setState(() {
+      _showResend = false;
+    });
+
+    const oneSec = Duration(seconds: 1);
+    _timer = Timer.periodic(
+      oneSec,
+      (Timer timer) {
+        if (_start == 0) {
+          setState(() {
+            timer.cancel();
+            _showResend = true;
+          });
+        } else {
+          setState(() {
+            _start--;
+          });
+        }
+      },
+    );
+  }
+
+  String formatTime(int seconds) {
+    int minutes = (seconds / 60).floor();
+    int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> resendOtp() async {
+    // Reset the timer
+    setState(() {
+      _start = 10;
+      _showResend = false;
+    });
+    startTimer();
+
+    // Add your resend OTP logic here
+    // For example:
+    // Uri resendOtpUri = buildUri('resend_otp.php');
+    // final response = await http.post(
+    //   resendOtpUri,
+    //   headers: {'Content-Type': 'application/json'},
+    //   body: jsonEncode({
+    //     "contact_info": widget.contactInfo,
+    //   }),
+    // );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("OTP has been resent!")),
+    );
+  }
+
   Future<void> verifyOtp() async {
     final otp = _controllers.map((c) => c.text).join();
     print(widget.contactInfo);
@@ -28,7 +92,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       return;
     }
 
-    Uri verifyOtpUri = buildUri('verify_otp.php');
+    Uri verifyOtpUri = buildUri('users/verify_otp.php');
 
     final response = await http.post(
       verifyOtpUri,
@@ -45,6 +109,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
     final data = jsonDecode(response.body);
     if (data['status'] == 'success') {
+      // Cancel timer if verification is successful
+      _timer?.cancel();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Account verified successfully!")),
       );
@@ -58,6 +125,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     for (var controller in _controllers) {
       controller.dispose();
     }
@@ -81,7 +149,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.white, // Pure white card background
+            color: Colors.white,
             border: Border(
               top: BorderSide(color: Colors.green.shade700, width: 2),
             ),
@@ -139,24 +207,65 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                   );
                 }),
               ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: verifyOtp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    "Verify",
-                    style: TextStyle(color: Colors.white),
+              const SizedBox(height: 20),
+              // Timer display - only show if timer is still running
+              if (!_showResend) ...[
+                Text(
+                  "Resend OTP in ${formatTime(_start)}",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _start < 60 ? Colors.grey : Colors.grey[700],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: verifyOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      "Verify",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 15),
+              // Resend section - only show when timer expires
+              if (_showResend)
+                Column(
+                  children: [
+                    const Text(
+                      "Didn't receive code?",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: resendOtp,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.green[700]!),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          "Resend OTP",
+                          style: TextStyle(color: Colors.green[700]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

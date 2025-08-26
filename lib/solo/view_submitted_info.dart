@@ -26,14 +26,22 @@ class _ViewSubmittedInfoPageState extends State<ViewSubmittedInfoPage> {
     int? userIdInt = prefs.getInt("user_id");
     String userId = userIdInt?.toString() ?? "";
 
-    Uri seniorInfoUri = buildUri('get_senior_info.php?user_id=$userId');
+    // Uri seniorInfoUri = buildUri('users/get_senior_info.php?user_id=$userId');
 
-    final res = await http.get(seniorInfoUri);
+    // final res = await http.get(seniorInfoUri);
 
     // final uri = Uri.parse(
     //     "http://192.168.100.4:8080/citicare/users/get_senior_info.php?user_id=$userId");
 
     // final res = await http.get(uri);
+
+    Uri seniorInfoUri = buildUri('users/get_solo_info.php');
+
+    final res = await http.post(
+      seniorInfoUri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({"user_id": userId}),
+    );
 
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
@@ -44,13 +52,17 @@ class _ViewSubmittedInfoPageState extends State<ViewSubmittedInfoPage> {
         });
       } else {
         setState(() => loading = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(json['message'])));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(json['message'] ?? "Failed")));
+        }
       }
     } else {
       setState(() => loading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Error fetching data")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Server error: ${res.statusCode}")));
+      }
     }
   }
 

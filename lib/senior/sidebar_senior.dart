@@ -1,5 +1,7 @@
 import 'package:citicare/dashboard_page.dart';
+import 'package:citicare/senior/attendance_page.dart';
 import 'package:citicare/senior/dashboard_senior.dart';
+import 'package:citicare/senior/manage_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:citicare/senior/news_page.dart';
@@ -127,20 +129,17 @@ class _SeniorSidebarState extends State<SeniorSidebar> {
         context,
         MaterialPageRoute(builder: (_) => const NewsPage()),
       );
-    }
-    // else if (page == "Announcements") {
-    //   Navigator.push(context,
-    //       MaterialPageRoute(builder: (_) => const AnnouncementsPage()));
-    // }
-    //else if (page == "Attendance") {
-    //   Navigator.push(
-    //       context, MaterialPageRoute(builder: (_) => const AttendancePage()));
-    // } else if (page == "Manage Profile") {
-    //   Navigator.push(context,
-    //       MaterialPageRoute(builder: (_) => const ManageProfilePage()));
-    // }
-    else if (page == "Logout") {
-      _logout();
+    } else if (page == "Announcements") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const AnnouncementsPage()));
+    } else if (page == "Attendance") {
+      Navigator.push(
+          context, MaterialPageRoute(builder: (_) => const AttendancePage()));
+    } else if (page == "Manage Profile") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ManageProfileForm()));
+    } else if (page == "Logout") {
+      _confirmLogout();
     }
   }
 

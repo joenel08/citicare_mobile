@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:citicare/global_url.dart';
 import 'package:citicare/solo/view_submitted_info.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -136,8 +137,8 @@ class _SoloApplicationFormState extends State<SoloApplicationForm> {
     int? userIdInt = prefs.getInt("user_id");
     String userId = userIdInt?.toString() ?? "";
 
-    final uri =
-        Uri.parse("http://192.168.100.4/citicare/users/save_solo_form.php");
+    final uri = buildUri("users/save_solo_form.php");
+    debugPrint("Sending request to: $uri");
 
     var request = http.MultipartRequest('POST', uri)
       ..fields['user_id'] = userId
