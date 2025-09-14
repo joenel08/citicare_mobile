@@ -209,7 +209,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
               ),
               const SizedBox(height: 20),
               // Timer display - only show if timer is still running
-              if (!_showResend) ...[
+              if (!_showResend)
                 Text(
                   "Resend OTP in ${formatTime(_start)}",
                   style: TextStyle(
@@ -218,25 +218,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: verifyOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.zero,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      "Verify",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
               const SizedBox(height: 15),
               // Resend section - only show when timer expires
               if (_showResend)
@@ -264,8 +245,26 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: verifyOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.zero,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    "Verify",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

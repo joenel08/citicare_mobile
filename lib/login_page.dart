@@ -1,4 +1,5 @@
 import 'package:citicare/otp_verification.dart';
+import 'package:citicare/pwd/PWDIncompleteProfilePage.dart';
 import 'package:citicare/senior/SeniorIncompleteProfilePage.dart';
 import 'package:citicare/senior/view_submitted_info.dart';
 import 'package:citicare/solo/SoloIncompleteProfilePage.dart';
@@ -120,6 +121,12 @@ class _LoginPageState extends State<LoginPage> {
                 builder: (_) => SoloDashboard(userId: data['id'])),
           );
           break;
+        case 'PWD':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => PWDDashboard(userId: data['id'])),
+          );
+          break;
         // Add 'PWD' or other user types here as needed
       }
     } else {
@@ -137,6 +144,12 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(
                 builder: (_) => const SoloIncompleteProfilePage()),
+          );
+          break;
+        case 'PWD':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const PWDIncompleteProfilePage()),
           );
           break;
         // Add fallback for other user types

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String apiHost = '10.183.182.154';
+const String apiHost = '192.168.100.4';
 const int apiPort = 80;
 const String apiBasePath = 'citicare';
 

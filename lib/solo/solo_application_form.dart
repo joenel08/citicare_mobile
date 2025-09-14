@@ -30,6 +30,8 @@ class _SoloApplicationFormState extends State<SoloApplicationForm> {
   String? gender;
   String? civilStatus;
   String? education;
+  TextEditingController occupation = TextEditingController();
+
   TextEditingController religion = TextEditingController();
   TextEditingController monthlyIncome = TextEditingController();
   TextEditingController email = TextEditingController();
@@ -152,6 +154,7 @@ class _SoloApplicationFormState extends State<SoloApplicationForm> {
       ..fields['civil_status'] = civilStatus ?? ''
       ..fields['education'] = education ?? ''
       ..fields['religion'] = religion.text
+      ..fields['occupation'] = occupation.text
       ..fields['monthly_income'] = monthlyIncome.text
       ..fields['email'] = email.text
       ..fields['pantawid_beneficiary'] = isPantawidBeneficiary ? "1" : "0"
@@ -496,7 +499,11 @@ class _SoloApplicationFormState extends State<SoloApplicationForm> {
           decoration: _styledInput("Religion"),
         ),
         const SizedBox(height: 10),
-
+        TextFormField(
+          controller: occupation,
+          decoration: _styledInput("Occupation"),
+        ),
+        const SizedBox(height: 10),
         // Monthly Income
         TextFormField(
           controller: monthlyIncome,
