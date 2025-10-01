@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:citicare/senior/view_submitted_info.dart';
+import 'package:citicare/pwd/view_submitted_info.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -24,33 +24,83 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
   final TextEditingController fname = TextEditingController();
   final TextEditingController mname = TextEditingController();
   final TextEditingController lname = TextEditingController();
+  final TextEditingController suffix = TextEditingController();
+
   DateTime? birthDate;
   String? gender;
   String? civilStatus;
   int age = 0;
 
+//pwd section
+// Selected disabilities (multi-select)
+  List<String> selectedDisabilities = [];
+
+  // Selected cause(s)
+  bool isCongenital = false;
+  bool isAcquired = false;
+
+  // Subcategories for congenital and acquired
+  List<String> congenitalOptions = [
+    "Autism",
+    "ADHD",
+    "Cerebral Palsy",
+    "Down Syndrome",
+  ];
+
+  List<String> acquiredOptions = [
+    "Chronic Illness",
+    "Cerebral Palsy",
+    "Injury",
+  ];
+
+  // Track selected sub-causes
+  List<String> selectedCongenital = [];
+  List<String> selectedAcquired = [];
   // Second Section
   String? education;
-  final TextEditingController occupation = TextEditingController();
+  // final TextEditingController occupation = TextEditingController();
+  String? selectedOccupation;
+  TextEditingController otherOccupationController = TextEditingController();
   final TextEditingController pob = TextEditingController();
-  final TextEditingController contactNo = TextEditingController();
+  // final TextEditingController contactNo = TextEditingController();
   String barangay = "Bangad";
 
+//organization information
+
+  final TextEditingController organizationAffiliated = TextEditingController();
+  final TextEditingController oaContactPerson = TextEditingController();
+  final TextEditingController officeAddress = TextEditingController();
+  final TextEditingController oacontactInfo = TextEditingController();
+
+  final TextEditingController sssNo = TextEditingController();
+  final TextEditingController gsisNo = TextEditingController();
+  final TextEditingController pagibigNo = TextEditingController();
+  final TextEditingController psnNo = TextEditingController();
+  final TextEditingController philhealthNo = TextEditingController();
+
   // Third Section
-  final TextEditingController emergencyName = TextEditingController();
-  final TextEditingController emergencyContact = TextEditingController();
-  final TextEditingController emergencyRelation = TextEditingController();
+  String? employmentStatus;
+  String? employmentType;
+  String? employmentCategory;
 
   // Fourth Section
-  bool isPensioner = false;
-  bool isRetiree = false;
-  bool isGSIS = false;
-  final TextEditingController retireeDetails = TextEditingController();
-  String? healthStatus;
+
+  final TextEditingController fatherLastname = TextEditingController();
+  final TextEditingController fatherFirstname = TextEditingController();
+  final TextEditingController fatherMiddlename = TextEditingController();
+
+  final TextEditingController motherLastname = TextEditingController();
+  final TextEditingController motherFirstname = TextEditingController();
+  final TextEditingController motherMiddlename = TextEditingController();
+
+  final TextEditingController guardianLastname = TextEditingController();
+  final TextEditingController guardianFirstname = TextEditingController();
+  final TextEditingController guardianMiddlename = TextEditingController();
 
   // Uploads
   File? birthProof;
-  File? residencyProof;
+  File? medicalCertificate;
+  File? indigencyCert;
   File? photoId;
 
   Future<void> pickImage(ImageSource source, Function(File) onSelected) async {
@@ -73,7 +123,7 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
 
   void nextStep() {
     if (_formKey.currentState!.validate()) {
-      if (_currentStep < 4) {
+      if (_currentStep < 6) {
         setState(() {
           _currentStep++;
         });
@@ -93,42 +143,92 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
       int? userIdInt = prefs.getInt("user_id");
       String userId = userIdInt?.toString() ?? "";
 
-      final uri = buildUri("users/save_senior_form.php");
+      print(userId);
+
+      // Validate birthdate before sending
+      String birthdateString = "";
+      if (birthDate != null) {
+        birthdateString = DateFormat('yyyy-MM-dd').format(birthDate!);
+        debugPrint("Formatted birthdate: $birthdateString");
+      } else {
+        debugPrint("Warning: Birthdate is null");
+        // Handle null birthdate appropriately - maybe show error to user
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Please select a birthdate"),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return; // Don't proceed without birthdate
+      }
+
+      final uri = buildUri("users/save_pwd_form.php");
       debugPrint("Sending request to: $uri");
 
       var request = http.MultipartRequest('POST', uri)
         ..fields['user_id'] = userId
-        ..fields['municipality'] = "Santa Maria"
-        ..fields['province'] = "Isabela"
+        ..fields['applicationType'] = "New"
         ..fields['first_name'] = fname.text
         ..fields['middle_name'] = mname.text
         ..fields['last_name'] = lname.text
-        ..fields['birthdate'] = birthDate?.toIso8601String() ?? ""
+        ..fields['suffix'] = suffix.text
+        ..fields['birthdate'] = birthdateString // Use the validated variable
+        ..fields['age'] = age.toString()
         ..fields['age'] = age.toString()
         ..fields['gender'] = gender ?? ''
         ..fields['civil_status'] = civilStatus ?? ''
-        ..fields['education'] = education ?? ''
-        ..fields['occupation'] = occupation.text
         ..fields['place_of_birth'] = pob.text
-        ..fields['contact_no'] = contactNo.text
         ..fields['barangay'] = barangay
-        ..fields['emergency_name'] = emergencyName.text
-        ..fields['emergency_contact'] = emergencyContact.text
-        ..fields['emergency_relationship'] = emergencyRelation.text
-        ..fields['social_pensioner'] = isPensioner ? "1" : "0"
-        ..fields['retiree'] = isRetiree ? "1" : "0"
-        ..fields['retiree_desc'] = isRetiree ? retireeDetails.text : ""
-        ..fields['is_gsis'] = isGSIS ? "1" : "0"
-        ..fields['health_status'] = healthStatus ?? '';
+        ..fields['education'] = education ?? ''
+        ..fields['occupation'] = selectedOccupation == "Others"
+            ? otherOccupationController.text
+            : selectedOccupation ?? ''
+        ..fields['status_of_employment'] = employmentStatus ?? ''
+        ..fields['type_of_employment'] = employmentType ?? ''
+        ..fields['category_of_employment'] = employmentCategory ?? ''
+        ..fields['organization_affiliation'] = organizationAffiliated.text
+        ..fields['contact_person'] = oaContactPerson.text
+        ..fields['office_address'] = officeAddress.text
+        ..fields['contact_information'] = oacontactInfo.text
+        ..fields['sss_no'] = sssNo.text
+        ..fields['gsis_no'] = gsisNo.text
+        ..fields['pagibig_no'] = pagibigNo.text
+        ..fields['psn_no'] = psnNo.text
+        ..fields['philhealth_no'] = philhealthNo.text
+        ..fields['father_lastname'] = fatherLastname.text
+        ..fields['father_firstname'] = fatherFirstname.text
+        ..fields['father_middlename'] = fatherMiddlename.text
+        ..fields['mother_lastname'] = motherLastname.text
+        ..fields['mother_firstname'] = motherFirstname.text
+        ..fields['mother_middlename'] = motherMiddlename.text
+        ..fields['guardian_lastname'] = guardianLastname.text
+        ..fields['guardian_firstname'] = guardianFirstname.text
+        ..fields['guardian_middlename'] = guardianMiddlename.text
+        ..fields['type_of_disability'] = selectedDisabilities.join(",")
+        ..fields['cause_of_disability'] = [
+          if (isCongenital) "Congenital",
+          if (isAcquired) "Acquired",
+        ].join(",")
+        ..fields['cause_of_disability_type'] = [
+          ...selectedCongenital,
+          ...selectedAcquired,
+        ].join(",");
 
       // Attach files if they exist
       if (birthProof != null) {
         request.files.add(
             await http.MultipartFile.fromPath('birth_proof', birthProof!.path));
       }
-      if (residencyProof != null) {
+      if (indigencyCert != null) {
         request.files.add(await http.MultipartFile.fromPath(
-            'residency_proof', residencyProof!.path));
+            'indegency_certificate', indigencyCert!.path));
+      }
+      if (medicalCertificate != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+            'medical_certificate', medicalCertificate!.path));
       }
       if (photoId != null) {
         request.files
@@ -145,13 +245,10 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(responseBody);
-        String appNo = data["application_no"];
-        int scId = data["sc_id"];
-        int userIdReturned = data["user_id"].toString() as int;
 
-        debugPrint("Application No: $appNo");
-        debugPrint("Inserted Senior ID: $scId");
-        debugPrint("User ID: $userIdReturned");
+        // // int userIdReturned = data["user_id"].toString() as int;
+        // int userIdReturned = int.parse(data["user_id"].toString());
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -167,7 +264,7 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
             context,
             MaterialPageRoute(
                 builder: (context) => ViewSubmittedInfoPage(
-                      userId: userIdReturned,
+                      userId: int.tryParse(userId) ?? 0,
                     )),
           );
         }
@@ -203,8 +300,9 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
   Widget build(BuildContext context) {
     final steps = [
       _buildFirstSection(),
+      _buildPWDInfoSection(),
       _buildSecondSection(),
-      _buildThirdSection(),
+      _buildOrganizationInfo(),
       _buildFourthSection(),
       _buildUploadSection(),
     ];
@@ -293,14 +391,14 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
                 ),
               ),
               child: Text(
-                _currentStep == 4 ? "Submit" : "Next",
+                _currentStep == 5 ? "Submit" : "Next",
                 style: const TextStyle(color: Colors.white),
               ),
               onPressed: _isLoading
                   ? null
                   : () async {
                       if (_formKey.currentState!.validate()) {
-                        if (_currentStep == 4) {
+                        if (_currentStep == 5) {
                           // Show confirmation dialog
                           bool confirm = await showDialog(
                             context: context,
@@ -399,6 +497,12 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
           validator: (val) => val!.isEmpty ? "Required" : null,
         ),
         const SizedBox(height: 12),
+        TextFormField(
+          controller: suffix,
+          decoration: _styledInput("Suffix"),
+          // validator: (val) => val!.isEmpty ? "Required" : null,
+        ),
+        const SizedBox(height: 12),
 
         // Date of Birth
         TextFormField(
@@ -456,6 +560,122 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
     );
   }
 
+  Widget _buildPWDInfoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Disability Information",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+
+        // --- Type of Disability checkboxes ---
+        const Text("Type of Disability",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        Wrap(
+          children: [
+            "Deaf or Hard of Hearing",
+            "Intellectual Disability",
+            "Learning Disability",
+            "Mental Disability",
+            "Physical Disability (Orthopedic)",
+            "Psychosocial Disability",
+            "Speech and Language Impairment",
+            "Visual Disability",
+            "Cancer (RA12215)",
+            "Rare Disease (RA10747)",
+          ].map((e) {
+            return CheckboxListTile(
+              title: Text(e),
+              value: selectedDisabilities.contains(e),
+              onChanged: (val) {
+                setState(() {
+                  if (val == true) {
+                    selectedDisabilities.add(e);
+                  } else {
+                    selectedDisabilities.remove(e);
+                  }
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+
+        // --- Cause of Disability checkboxes ---
+        const Text("Cause of Disability",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        CheckboxListTile(
+          title: const Text("Congenital / Inborn"),
+          value: isCongenital,
+          onChanged: (val) {
+            setState(() {
+              isCongenital = val ?? false;
+              if (!isCongenital) selectedCongenital.clear();
+            });
+          },
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+        if (isCongenital)
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Column(
+              children: congenitalOptions.map((e) {
+                return CheckboxListTile(
+                  title: Text(e),
+                  value: selectedCongenital.contains(e),
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        selectedCongenital.add(e);
+                      } else {
+                        selectedCongenital.remove(e);
+                      }
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                );
+              }).toList(),
+            ),
+          ),
+
+        CheckboxListTile(
+          title: const Text("Acquired"),
+          value: isAcquired,
+          onChanged: (val) {
+            setState(() {
+              isAcquired = val ?? false;
+              if (!isAcquired) selectedAcquired.clear();
+            });
+          },
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+        if (isAcquired)
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Column(
+              children: acquiredOptions.map((e) {
+                return CheckboxListTile(
+                  title: Text(e),
+                  value: selectedAcquired.contains(e),
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        selectedAcquired.add(e);
+                      } else {
+                        selectedAcquired.remove(e);
+                      }
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildSecondSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,9 +692,66 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
           onChanged: (val) => setState(() => education = val),
         ),
         const SizedBox(height: 12),
-        TextFormField(
-          controller: occupation,
+        DropdownButtonFormField<String>(
+          value: selectedOccupation,
           decoration: _styledInput("Occupation"),
+          items: [
+            "Managers",
+            "Professionals",
+            "Technicians and Associate Professionals",
+            "Clerical Support Workers",
+            "Service and Sales workers",
+            "Skilled Agricultural, Forestry and Fishery Workers",
+            "Craft and Related Trade Workers",
+            "Others"
+          ].map((e) {
+            return DropdownMenuItem(
+              value: e,
+              child: Text(e),
+            );
+          }).toList(),
+          onChanged: (val) {
+            setState(() {
+              selectedOccupation = val;
+              if (val != "Others") {
+                otherOccupationController.clear();
+              }
+            });
+          },
+        ),
+        if (selectedOccupation == "Others") ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: otherOccupationController,
+            decoration: _styledInput("Please specify Occupation"),
+          ),
+        ],
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: employmentStatus,
+          decoration: _styledInput("Status of employment"),
+          items: ["Employed", "Unemployed", "Self-employed"]
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (val) => setState(() => employmentStatus = val),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: employmentType,
+          decoration: _styledInput("Types of employment"),
+          items: ["Permanent/Regular", "Seasonal", "Casual", "Emergency"]
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (val) => setState(() => employmentType = val),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: employmentCategory,
+          decoration: _styledInput("Category of employment"),
+          items: ["Government", "Private"]
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (val) => setState(() => employmentCategory = val),
         ),
         const SizedBox(height: 12),
         TextFormField(
@@ -482,10 +759,10 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
           decoration: _styledInput("Place of Birth"),
         ),
         const SizedBox(height: 12),
-        TextFormField(
-          controller: contactNo,
-          decoration: _styledInput("Contact Number"),
-        ),
+        // TextFormField(
+        //   controller: contactNo,
+        //   decoration: _styledInput("Contact Number"),
+        // ),
         const SizedBox(height: 12),
         const Text("Complete Address (Barangay Only)",
             style: TextStyle(fontWeight: FontWeight.bold)),
@@ -524,83 +801,122 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
     );
   }
 
-  Widget _buildThirdSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("In Case of Emergency",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: emergencyName,
-          decoration: _styledInput("Name"),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: emergencyContact,
-          decoration: _styledInput("Contact No."),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: emergencyRelation,
-          decoration: _styledInput("Relationship"),
-        ),
-      ],
-    );
+  Widget _buildOrganizationInfo() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text("Organization Information",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: organizationAffiliated,
+        decoration: _styledInput("Organization Affiliated"),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: oaContactPerson,
+        decoration: _styledInput("Contact Person"),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: officeAddress,
+        decoration: _styledInput("Office Address"),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: oacontactInfo,
+        decoration: _styledInput("Contact Information"),
+      ),
+      const SizedBox(height: 20),
+      const Text("ID Reference Number",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: sssNo,
+        decoration: _styledInput("SSS No."),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: gsisNo,
+        decoration: _styledInput("GSIS No."),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: pagibigNo,
+        decoration: _styledInput("PAGIBIG No."),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: psnNo,
+        decoration: _styledInput("PSN No."),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: philhealthNo,
+        decoration: _styledInput("Philhealth No."),
+      ),
+    ]);
   }
 
   Widget _buildFourthSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Status & Health",
+        const Text("Family Background",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text("Senior Citizen is Social Pensioner"),
-          value: isPensioner,
-          onChanged: (val) => setState(() => isPensioner = val!),
-          controlAffinity: ListTileControlAffinity.leading,
+        const Text("Father's Name",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: fatherLastname,
+          decoration: _styledInput("Lastname"),
         ),
-        CheckboxListTile(
-          title: Row(
-            children: [
-              const Expanded(child: Text("Senior is a retiree (specify):")),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: retireeDetails,
-                  decoration: _styledInput("Details"),
-                ),
-              ),
-            ],
-          ),
-          value: isRetiree,
-          onChanged: (val) => setState(() => isRetiree = val!),
-          controlAffinity: ListTileControlAffinity.leading,
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: fatherFirstname,
+          decoration: _styledInput("Firstname"),
         ),
-        CheckboxListTile(
-          title: const Text("Senior is a GSIS/SSS/Vet. Pensioner"),
-          value: isGSIS,
-          onChanged: (val) => setState(() => isGSIS = val!),
-          controlAffinity: ListTileControlAffinity.leading,
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: fatherMiddlename,
+          decoration: _styledInput("Middlename"),
+        ),
+        const SizedBox(height: 16),
+        const Text("Mother's Name",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: motherLastname,
+          decoration: _styledInput("Lastname"),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: motherFirstname,
+          decoration: _styledInput("Firstname"),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: motherMiddlename,
+          decoration: _styledInput("Middlename"),
+        ),
+        const SizedBox(height: 16),
+        const Text("Guardian's Name",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: guardianLastname,
+          decoration: _styledInput("Lastname"),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: guardianFirstname,
+          decoration: _styledInput("Firstname"),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: guardianMiddlename,
+          decoration: _styledInput("Middlename"),
         ),
         const SizedBox(height: 10),
-        const Text("Health Status",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Column(
-          children: ["Physically Fit", "Sickly/Frail", "Bedridden", "PWD"]
-              .map((status) {
-            return RadioListTile(
-              title: Text(status),
-              value: status,
-              groupValue: healthStatus,
-              onChanged: (val) => setState(() => healthStatus = val.toString()),
-            );
-          }).toList(),
-        )
       ],
     );
   }
@@ -611,10 +927,12 @@ class _PwdApplicationFormState extends State<PwdApplicationForm> {
       children: [
         const Text("Upload Requirements",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        _imagePicker("Birth/Marriage/Baptismal Certificate", birthProof,
+        _imagePicker("Birth Certificate", birthProof,
             (file) => setState(() => birthProof = file)),
-        _imagePicker("Proof of Residency", residencyProof,
-            (file) => setState(() => residencyProof = file)),
+        _imagePicker("Medical Certificate", medicalCertificate,
+            (file) => setState(() => medicalCertificate = file)),
+        _imagePicker("Indigency", indigencyCert,
+            (file) => setState(() => indigencyCert = file)),
         _imagePicker("1x1 Photo (White Background)", photoId,
             (file) => setState(() => photoId = file)),
       ],
